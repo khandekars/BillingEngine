@@ -21,16 +21,19 @@ public class Payment {
     String status;
     Integer retryNumber;
     String transactionReference;
+    String paymentMethod;
 
 public Payment() {}
 
-    public Payment( Policy policy, LocalDateTime paymentDateTime, BigDecimal amount, String status, Integer retryNumber, String transactionReference) {
+    public Payment( Policy policy, LocalDateTime paymentDateTime, BigDecimal amount, String status, Integer retryNumber,
+                    String transactionReference, String paymentMethod)  {
         this.policy = policy;
         this.paymentDateTime = paymentDateTime;
         this.amount = amount;
         this.status = status;
         this.retryNumber = retryNumber;
         this.transactionReference = transactionReference;
+        this.paymentMethod = paymentMethod;
     }
 
     public Long getId() {
@@ -87,5 +90,13 @@ public Payment() {}
 
     public void setTransactionReference(String transactionReference) {
         this.transactionReference = transactionReference;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 }

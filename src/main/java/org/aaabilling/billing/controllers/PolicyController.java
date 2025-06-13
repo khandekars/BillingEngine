@@ -42,7 +42,7 @@ public class PolicyController {
     }
 
 
-    @PostMapping("/policies/{policyId}/payment")
+    @PostMapping("/{policyId}/payment")
     public ResponseEntity<PaymentResponse> postPaymentForPolicy(
             @PathVariable Long policyId,
             @RequestBody PaymentRequest request) {
@@ -56,6 +56,18 @@ public class PolicyController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         } else {
             return ResponseEntity.ok(response); // 200 OK for successful payment
+        }
+    }
+
+    @PostMapping("/retry-failed")
+    public ResponseEntity<String> retryFailed() {
+
+        boolean result = paymentService.retryFailedPayments();
+
+        if (result) {
+            return ResponseEntity.ok().body("COMPLETED");
+        } else {
+            return ResponseEntity.ok().body("FAILED");
         }
     }
 

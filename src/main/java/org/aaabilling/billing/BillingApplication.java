@@ -60,7 +60,7 @@ public class BillingApplication {
 			System.out.println("Testing a Failed payment for Policy ID: " + p1.getId());
 			PaymentRequest failedPaymentRequest = new PaymentRequest();
 			failedPaymentRequest.setAmount(new BigDecimal("1000"));
-			failedPaymentRequest.setPaymentMethodType("Credit Card");
+			failedPaymentRequest.setPaymentMethodType("Failed");
 
 			PaymentResponse failedlPaymentResponse = paymentService.processPayment(p1.getId(), failedPaymentRequest);
 			System.out.println("Payment Response: " + failedlPaymentResponse + "\n\n");
@@ -68,10 +68,17 @@ public class BillingApplication {
 			failedlPaymentResponse = paymentService.processPayment(p1.getId(), failedPaymentRequest);
 			System.out.println("Payment Response: " + failedlPaymentResponse + "\n\n");
 
+			// Should pickup only policyId 1 as it failed. Policy 3 is delinquent so should not pick it
 			System.out.println("Test Retry failed payments\n\n");
 			paymentService.retryFailedPayments();
 
-			System.out.println("Testing completed. Ready");
+			System.out.println("Retry testing completed for failed payments");
+
+			//Test again. No policy should be picked up as retry service should always succeed
+			System.out.println("Again Test Retry failed payments\n\n");
+			paymentService.retryFailedPayments();
+
+			System.out.println("Retry testing completed. Ready");
 		};
 	}
 }

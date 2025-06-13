@@ -13,9 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.aaabilling.billing.dto.PaymentRequest;
 import org.aaabilling.billing.dto.PaymentResponse;
@@ -52,7 +54,7 @@ public class PaymentService {
                     "FAILED", "Policy not found.", null, null, request.getPaymentMethodType());
         }
         Policy policy = policyOptional.get();
-        Payment savedPayment = applyPayment(policy, request.getAmount());
+        Payment savedPayment = applyPayment(policy, request.getAmount(), request.getPaymentMethodType());
 
         String message = savedPayment.getStatus().equals("COMPLETED")? "Payment processed successfully." : "Payment failed at gateway";
         String transactionReference = savedPayment.getTransactionReference();
@@ -75,32 +77,37 @@ public class PaymentService {
     // why the payment had failed
 
     @Transactional
-    public void retryFailedPayments() {
-        List<Policy> policyList = policyRepository.findByLastPaymentStatus("FAILED");
+    public boolean retryFailedPayments() {
+       List<Policy> policyList = policyRepository.findByLastPaymentStatus("FAILED");
 
-        policyList.forEach(policy -> {
+       String result =  policyList.stream().map(policy -> {
             BigDecimal amount = policyScheduleRepository.findFirstByPolicyAndStatusOrderByPaymentDueDateAsc(policy, "DUE").getScheduledAmount();
-            applyPayment(policy,amount);
-        });
+            Payment payment = applyPayment(policy,amount, "CC");
+            return payment.getStatus();
+        }).reduce("COMPLETED",(String res1, String res2) ->
+       {  return res1.equals("FAILED") || res2.equals("FAILED") ? "FAILED" : "COMPLETED";
+       });
+
+       return result.equals("COMPLETED");
     }
 
-    private Payment applyPayment(Policy policy, BigDecimal amount) {
+    private Payment applyPayment(Policy policy, BigDecimal amount, String paymentMethodType) {
         String transactionReference = UUID.randomUUID().toString(); // Simulate gateway transaction ID
         String paymentStatus;
         String message;
 
-
+        System.out.println("Retrying payment for policyId: " + policy.getId() + " payment type : "  + paymentMethodType);
         // Simulate Payment Gateway Call. This simply returns boolean. In real application this would return
         // transaction reference ID along with status. This referenceId is to correlate call to
         // the external Payment Gateway service
 
-        boolean gatewaySuccess = paymentGatewayService.simulatePaymentGatewayCall(policy, amount);
+        boolean gatewaySuccess = paymentGatewayService.simulatePaymentGatewayCall(paymentMethodType);
 
         // Record the payment attempt regardless of success or failure
 
 
         paymentStatus =  gatewaySuccess ? "COMPLETED" : "FAILED";
-
+        System.out.println("Status: " + paymentStatus);
         // Calculate retryCount for Payment record to be saved
         // if past payment is failed, return 0 if current payment succeeded else increment retry count of failed
         // if past payment is successful or none existed, return 0 if current payment succeeded else 1 for current failed payment
@@ -117,7 +124,8 @@ public class PaymentService {
                 amount,
                 paymentStatus,
                 retryCount,
-                transactionReference
+                transactionReference,
+                paymentMethodType
         );
 
         Payment savedPayment = paymentRepository.save(p);
